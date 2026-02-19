@@ -11,6 +11,14 @@ import time
 import json
 from werkzeug.utils import secure_filename
 from detection_engine import MoneyMulingDetector
+import google.generativeai as genai
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Configure Gemini API
+genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
 
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
 CORS(app)
@@ -56,8 +64,8 @@ def analyze_transactions():
         return jsonify({"error": "Invalid file type. Please upload a CSV file"}), 400
     
     try:
-        # Read CSV file
-        df = pd.read_csv(file)
+        # Read CSV file with automatic delimiter detection and skip malformed rows
+        df = pd.read_csv(file, sep=None, engine='python', on_bad_lines='skip', encoding_errors='ignore')
         
         # Validate required columns
         required_columns = ['transaction_id', 'sender_id', 'receiver_id', 'amount', 'timestamp']
@@ -76,12 +84,20 @@ def analyze_transactions():
         processing_time = round(time.time() - start_time, 2)
         results['summary']['processing_time_seconds'] = processing_time
         
+        # Optional: Add AI insights for the fraud rings
+        if results['fraud_rings'] and os.environ.get("GOOGLE_API_KEY"):
+            try:
+                ai_insight = get_ai_explanation(results['fraud_rings'], results['summary'])
+                results['summary']['ai_insight'] = ai_insight
+            except Exception as e:
+                print(f"AI insight failed: {e}")
+        
         return jsonify(results)
     
     except pd.errors.EmptyDataError:
         return jsonify({"error": "The uploaded CSV file is empty"}), 400
-    except pd.errors.ParserError:
-        return jsonify({"error": "Error parsing CSV file. Please check the format"}), 400
+    except pd.errors.ParserError as e:
+        return jsonify({"error": f"CSV Format Error: {str(e)}. Please ensure the file is comma-separated and has the correct columns."}), 400
     except Exception as e:
         return jsonify({"error": f"Analysis failed: {str(e)}"}), 500
 
@@ -90,6 +106,27 @@ def get_sample_data():
     """Generate sample transaction data for testing"""
     sample_data = generate_sample_data()
     return jsonify(sample_data)
+
+def get_ai_explanation(rings, summary):
+    """Use Gemini AI to explain the detected fraud patterns"""
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    
+    # Prepare data for the prompt
+    patterns = set(r['pattern_type'] for r in rings)
+    ring_count = len(rings)
+    
+    prompt = f"""
+    As a Financial Forensics Expert, analyze these money muling detection results:
+    - Total rings detected: {ring_count}
+    - Pattern types found: {', '.join(patterns)}
+    - Total accounts analyzed: {summary['total_accounts_analyzed']}
+    - Suspicious accounts flagged: {summary['suspicious_accounts_flagged']}
+    
+    Provide a professional, brief (2-3 sentence) forensic summary of the risk levels and what these specific patterns (like {', '.join(patterns)}) usually indicate in a real-world money laundering context.
+    """
+    
+    response = model.generate_content(prompt)
+    return response.text
 
 def generate_sample_data():
     """Generate sample CSV content with known fraud patterns"""
@@ -134,7 +171,7 @@ def generate_sample_data():
             'sender_id': disperser,
             'receiver_id': f'ACC_DST_{i:03d}',
             'amount': round(random.uniform(500, 2000), 2),
-            'timestamp': (base_time + timedelta(hours=24+i)).strftime('%Y-%m-%d %H:%M:%SS')
+            'timestamp': (base_time + timedelta(hours=24+i)).strftime('%Y-%m-%d %H:%M:%S')
         })
         tx_id += 1
     
@@ -146,7 +183,7 @@ def generate_sample_data():
             'sender_id': shell_chain[i],
             'receiver_id': shell_chain[i + 1],
             'amount': round(random.uniform(8000, 15000), 2),
-            'timestamp': (base_time + timedelta(hours=48+i*3)).strftime('%Y-%m-%d %H:%M:%SS')
+            'timestamp': (base_time + timedelta(hours=48+i*3)).strftime('%Y-%m-%d %H:%M:%S')
         })
         tx_id += 1
     
@@ -159,7 +196,7 @@ def generate_sample_data():
                 'sender_id': f'CUSTOMER_{random.randint(100, 999)}',
                 'receiver_id': merchant,
                 'amount': round(random.uniform(50, 500), 2),
-                'timestamp': (base_time + timedelta(days=random.randint(0, 30))).strftime('%Y-%m-%d %H:%M:%SS')
+                'timestamp': (base_time + timedelta(days=random.randint(0, 30))).strftime('%Y-%m-%d %H:%M:%S')
             })
             tx_id += 1
     
