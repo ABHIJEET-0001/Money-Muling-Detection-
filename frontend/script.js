@@ -4,8 +4,8 @@ let analysisResults = null;
 const ui = {
   theme: null,
   showLabels: true,
-  notif: 0,
-  history: []
+  history: [],
+  aiInsight: null
 };
 
 // Chart instances
@@ -20,10 +20,10 @@ let nodeSel = null, linkSel = null, labelSel = null;
 
 let nodePatternMap = new Map();
 
-function $(id){ return document.getElementById(id); }
-function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function $(id) { return document.getElementById(id); }
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 
-function toast(type, title, msg){
+function toast(type, title, msg) {
   const host = $('toastHost');
   const el = document.createElement('div');
   el.className = `toast ${type}`;
@@ -32,12 +32,12 @@ function toast(type, title, msg){
   setTimeout(() => el.remove(), 3200);
 }
 
-function setTab(target){
+function setTab(target) {
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.target === target));
   document.querySelectorAll('.panel').forEach(p => p.classList.toggle('show', p.id === `panel-${target}`));
 }
 
-function initNav(){
+function initNav() {
   document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.target)));
 
   $('brandLink').addEventListener('click', (e) => {
@@ -50,7 +50,7 @@ function initNav(){
 
   $('homeDocsBtn').addEventListener('click', () => {
     const docs = $('docsCard');
-    docs.scrollIntoView({behavior: 'smooth', block: 'start'});
+    docs.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 
   $('homeSampleBtn').addEventListener('click', async () => {
@@ -61,116 +61,109 @@ function initNav(){
   setTab('home');
 }
 
-function setTheme(next){
+function setTheme(next) {
   ui.theme = next;
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('ff_theme', next);
 
   // rebuild visuals to match theme
-  if (analysisResults){
+  if (analysisResults) {
     buildCharts();
     buildTimeline();
     buildGraph();
   }
 }
 
-function toggleTheme(){
+function toggleTheme() {
   setTheme(ui.theme === 'dark' ? 'light' : 'dark');
   toast('info', 'Theme', ui.theme === 'dark' ? 'Dark theme enabled.' : 'Light theme enabled.');
 }
 
-function initTheme(){
+function initTheme() {
   const saved = localStorage.getItem('ff_theme');
   setTheme(saved || 'light'); // bright default, like you asked
   $('themeBtn').addEventListener('click', toggleTheme);
 }
 
-function incNotif(){
-  ui.notif += 1;
-  $('notifBadge').textContent = String(ui.notif);
-}
 
-function initUpload(){
+function initUpload() {
   const drop = $('dropzone');
   const input = $('fileInput');
 
   drop.addEventListener('click', () => input.click());
-  drop.addEventListener('dragover', (e)=>{ e.preventDefault(); drop.classList.add('dragover'); });
-  drop.addEventListener('dragleave', ()=> drop.classList.remove('dragover'));
-  drop.addEventListener('drop', (e)=>{
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('dragover'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+  drop.addEventListener('drop', (e) => {
     e.preventDefault();
     drop.classList.remove('dragover');
     const f = e.dataTransfer.files?.[0];
     if (f) handleFile(f);
   });
 
-  input.addEventListener('change', (e)=>{
+  input.addEventListener('change', (e) => {
     const f = e.target.files?.[0];
     if (f) handleFile(f);
   });
 
-  $('browseBtn').addEventListener('click', (e)=>{ e.stopPropagation(); input.click(); });
+  $('browseBtn').addEventListener('click', (e) => { e.stopPropagation(); input.click(); });
   $('removeFileBtn').addEventListener('click', clearFile);
   $('sampleBtn').addEventListener('click', loadSampleDataset);
-  $('runBtn').addEventListener('click', ()=> runAnalysis(selectedFile));
+  $('runBtn').addEventListener('click', () => runAnalysis(selectedFile));
 }
 
-function handleFile(file){
-  if (!file.name.toLowerCase().endsWith('.csv')){
+function handleFile(file) {
+  if (!file.name.toLowerCase().endsWith('.csv')) {
     toast('error', 'Invalid file', 'Upload a .csv file.');
-    incNotif();
     return;
   }
   selectedFile = file;
   $('fileInfo').classList.remove('hidden');
   $('fileName').textContent = file.name;
-  $('fileSize').textContent = `${(file.size/1024).toFixed(1)} KB`;
+  $('fileSize').textContent = `${(file.size / 1024).toFixed(1)} KB`;
   $('runBtn').disabled = false;
 }
 
-function clearFile(){
+function clearFile() {
   selectedFile = null;
   $('fileInput').value = '';
   $('fileInfo').classList.add('hidden');
   $('runBtn').disabled = true;
 }
 
-async function loadSampleDataset(){
-  try{
+async function loadSampleDataset() {
+  try {
     toast('info', 'Loading', 'Fetching sample dataset…');
     const res = await fetch('/api/sample-data');
     if (!res.ok) throw new Error('Sample endpoint failed');
     const data = await res.json();
 
-    const headers = ['transaction_id','sender_id','receiver_id','amount','timestamp'];
+    const headers = ['transaction_id', 'sender_id', 'receiver_id', 'amount', 'timestamp'];
     let csv = headers.join(',') + '\n';
     data.forEach(row => { csv += headers.map(h => row[h]).join(',') + '\n'; });
 
-    const blob = new Blob([csv], {type:'text/csv'});
-    const file = new File([blob], 'sample_transactions.csv', {type:'text/csv'});
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const file = new File([blob], 'sample_transactions.csv', { type: 'text/csv' });
     handleFile(file);
 
     toast('success', 'Sample ready', 'Click “Run Analysis” to continue.');
-    incNotif();
-  } catch{
+  } catch {
     toast('error', 'Error', 'Could not load sample dataset.');
-    incNotif();
   }
 }
 
-async function runAnalysis(file){
+async function runAnalysis(file) {
   if (!file) return;
 
   $('runBtn').disabled = true;
   toast('info', 'Analysis started', 'Uploading CSV and detecting patterns…');
 
-  try{
+  try {
     const fd = new FormData();
     fd.append('file', file);
 
-    const res = await fetch('/api/analyze', { method:'POST', body: fd });
-    if (!res.ok){
-      const err = await res.json().catch(()=>({}));
+    const res = await fetch('/api/analyze', { method: 'POST', body: fd });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Analysis failed');
     }
 
@@ -186,17 +179,15 @@ async function runAnalysis(file){
     fillHomeSnapshot();
 
     toast('success', 'Analysis complete', 'Dashboard and graph updated.');
-    incNotif();
     setTab('dashboard');
-  } catch(e){
+  } catch (e) {
     toast('error', 'Error', e.message);
-    incNotif();
-  } finally{
+  } finally {
     $('runBtn').disabled = !selectedFile;
   }
 }
 
-function enableExports(on){
+function enableExports(on) {
   $('downloadJsonBtn').disabled = !on;
   $('downloadJsonBtn2').disabled = !on;
   $('downloadCsvBtn').disabled = !on;
@@ -204,7 +195,7 @@ function enableExports(on){
   $('exportPdfBtn2').disabled = !on;
 }
 
-function fillHomeSnapshot(){
+function fillHomeSnapshot() {
   const s = analysisResults?.summary;
   if (!s) return;
   $('miniAccounts').textContent = s.total_accounts_analyzed ?? '—';
@@ -213,7 +204,7 @@ function fillHomeSnapshot(){
   $('miniTime').textContent = (s.processing_time_seconds ?? '—') + 's';
 }
 
-function requiredJsonPayload(){
+function requiredJsonPayload() {
   return {
     suspicious_accounts: analysisResults.suspicious_accounts,
     fraud_rings: analysisResults.fraud_rings,
@@ -221,9 +212,9 @@ function requiredJsonPayload(){
   };
 }
 
-function downloadJSON(){
+function downloadJSON() {
   if (!analysisResults) return;
-  const blob = new Blob([JSON.stringify(requiredJsonPayload(), null, 2)], {type:'application/json'});
+  const blob = new Blob([JSON.stringify(requiredJsonPayload(), null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'money_muling_report.json';
@@ -235,7 +226,7 @@ function downloadJSON(){
   toast('success', 'Exported', 'JSON report downloaded.');
 }
 
-function downloadCSVs(){
+function downloadCSVs() {
   if (!analysisResults) return;
 
   const accs = analysisResults.suspicious_accounts || [];
@@ -243,7 +234,7 @@ function downloadCSVs(){
 
   let csvA = 'account_id,suspicion_score,detected_patterns,ring_id\n';
   accs.forEach(a => {
-    csvA += `${a.account_id},${a.suspicion_score},"${(a.detected_patterns||[]).join(';')}",${a.ring_id||''}\n`;
+    csvA += `${a.account_id},${a.suspicion_score},"${(a.detected_patterns || []).join(';')}",${a.ring_id || ''}\n`;
   });
 
   let csvR = 'ring_id,pattern_type,member_count,risk_score,member_accounts\n';
@@ -252,7 +243,7 @@ function downloadCSVs(){
   });
 
   const dl = (text, name) => {
-    const blob = new Blob([text], {type:'text/csv'});
+    const blob = new Blob([text], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = name;
@@ -269,11 +260,11 @@ function downloadCSVs(){
   toast('success', 'Exported', 'CSV files downloaded.');
 }
 
-async function exportPDF(){
+async function exportPDF() {
   if (!analysisResults) return;
-  try{
+  try {
     const panel = document.querySelector('#panel-dashboard');
-    const canvas = await html2canvas(panel, {scale: 2, backgroundColor: null});
+    const canvas = await html2canvas(panel, { scale: 2, backgroundColor: null });
     const imgData = canvas.toDataURL('image/png');
 
     const { jsPDF } = window.jspdf;
@@ -289,7 +280,7 @@ async function exportPDF(){
     pdf.addImage(imgData, 'PNG', 0, y, imgW, imgH);
 
     let remaining = imgH - pageH;
-    while (remaining > 0){
+    while (remaining > 0) {
       pdf.addPage();
       y = -(imgH - remaining);
       pdf.addImage(imgData, 'PNG', 0, y, imgW, imgH);
@@ -299,22 +290,21 @@ async function exportPDF(){
     pdf.save('dashboard_report.pdf');
     logExport('PDF');
     toast('success', 'Exported', 'PDF generated (Dashboard).');
-  } catch{
+  } catch {
     toast('error', 'PDF export failed', 'Could not generate PDF in this browser.');
-    incNotif();
   }
 }
 
-function logExport(type){
+function logExport(type) {
   const t = new Date().toLocaleString();
-  ui.history.unshift({type, t});
+  ui.history.unshift({ type, t });
   $('history').innerHTML = ui.history
     .slice(0, 8)
     .map(x => `• <strong>${x.type}</strong> <span class="muted">(${x.t})</span>`)
     .join('<br>');
 }
 
-function fillDashboard(){
+function fillDashboard() {
   const s = analysisResults.summary || {};
   const total = s.total_accounts_analyzed || 0;
   const susp = s.suspicious_accounts_flagged || 0;
@@ -324,11 +314,21 @@ function fillDashboard(){
   $('kpiRings').textContent = s.fraud_rings_detected || 0;
   $('kpiTime').textContent = (s.processing_time_seconds ?? 0) + 's';
 
-  const pct = total ? ((susp/total)*100).toFixed(1) : '0.0';
+  const pct = total ? ((susp / total) * 100).toFixed(1) : '0.0';
   $('kpiSuspPct').textContent = `${pct}% of total`;
+
+  // Fill AI Insight
+  const aiBox = $('aiInsightBox');
+  const aiText = $('aiInsightText');
+  if (s.ai_insight) {
+    aiBox.classList.remove('hidden');
+    aiText.textContent = s.ai_insight;
+  } else {
+    aiBox.classList.add('hidden');
+  }
 }
 
-function fillTables(){
+function fillTables() {
   fillRings();
   fillAccounts();
 
@@ -337,14 +337,14 @@ function fillTables(){
   $('riskFilter').addEventListener('change', filterAccounts);
 }
 
-function filterRows(tbodyId, q){
+function filterRows(tbodyId, q) {
   const query = (q || '').toLowerCase();
   document.querySelectorAll(`#${tbodyId} tr`).forEach(tr => {
     tr.style.display = tr.textContent.toLowerCase().includes(query) ? '' : 'none';
   });
 }
 
-function filterAccounts(){
+function filterAccounts() {
   const q = ($('accountsSearch').value || '').toLowerCase();
   const rf = $('riskFilter').value;
 
@@ -361,18 +361,18 @@ function filterAccounts(){
   });
 }
 
-function badge(text){
+function badge(text) {
   return `<span style="display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid var(--border);background:rgba(15,23,42,0.03);margin-right:6px;font-size:12px">${text}</span>`;
 }
 
-function riskChip(score){
+function riskChip(score) {
   const s = Number(score || 0);
   if (s >= 70) return `<span style="padding:4px 10px;border-radius:999px;border:1px solid rgba(239,68,68,0.28);background:rgba(239,68,68,0.10)">${s}</span>`;
   if (s >= 40) return `<span style="padding:4px 10px;border-radius:999px;border:1px solid rgba(245,158,11,0.28);background:rgba(245,158,11,0.10)">${s}</span>`;
   return `<span style="padding:4px 10px;border-radius:999px;border:1px solid rgba(22,163,74,0.28);background:rgba(22,163,74,0.10)">${s}</span>`;
 }
 
-function computeNodePatterns(){
+function computeNodePatterns() {
   const map = new Map();
   (analysisResults.fraud_rings || []).forEach(r => {
     (r.member_accounts || []).forEach(acc => {
@@ -383,14 +383,14 @@ function computeNodePatterns(){
   return map;
 }
 
-function fillRings(){
+function fillRings() {
   const tbody = $('ringsBody');
   const rings = analysisResults.fraud_rings || [];
   tbody.innerHTML = '';
 
   nodePatternMap = computeNodePatterns();
 
-  if (!rings.length){
+  if (!rings.length) {
     tbody.innerHTML = `<tr><td colspan="6" class="muted">No rings detected.</td></tr>`;
     return;
   }
@@ -412,12 +412,12 @@ function fillRings(){
   });
 }
 
-function fillAccounts(){
+function fillAccounts() {
   const tbody = $('accountsBody');
   const accs = analysisResults.suspicious_accounts || [];
   tbody.innerHTML = '';
 
-  if (!accs.length){
+  if (!accs.length) {
     tbody.innerHTML = `<tr><td colspan="5" class="muted">No suspicious accounts flagged.</td></tr>`;
     return;
   }
@@ -441,18 +441,18 @@ function fillAccounts(){
 }
 
 /* Charts (theme-aware) */
-function chartText(){ return cssVar('--text') || '#111'; }
-function chartGrid(){ return cssVar('--grid') || 'rgba(0,0,0,0.08)'; }
+function chartText() { return cssVar('--text') || '#111'; }
+function chartGrid() { return cssVar('--grid') || 'rgba(0,0,0,0.08)'; }
 
-function buildCharts(){
+function buildCharts() {
   if (!analysisResults) return;
 
   const text = chartText();
   const grid = chartGrid();
 
   const accs = analysisResults.suspicious_accounts || [];
-  let high=0, med=0, low=0;
-  accs.forEach(a=>{
+  let high = 0, med = 0, low = 0;
+  accs.forEach(a => {
     const s = Number(a.suspicion_score || 0);
     if (s >= 70) high++;
     else if (s >= 40) med++;
@@ -461,34 +461,34 @@ function buildCharts(){
 
   if (riskChart) riskChart.destroy();
   riskChart = new Chart($('riskChart'), {
-    type:'doughnut',
-    data:{
-      labels:['High (≥70)','Medium (40–69)','Low (<40)'],
-      datasets:[{
-        data:[high, med, low],
-        backgroundColor:['#ef4444','#f59e0b','#16a34a'],
+    type: 'doughnut',
+    data: {
+      labels: ['High (≥70)', 'Medium (40–69)', 'Low (<40)'],
+      datasets: [{
+        data: [high, med, low],
+        backgroundColor: ['#ef4444', '#f59e0b', '#16a34a'],
         borderWidth: 0
       }]
     },
-    options:{ plugins:{ legend:{ labels:{ color:text } } } }
+    options: { plugins: { legend: { labels: { color: text } } } }
   });
 
   const rings = analysisResults.fraud_rings || [];
-  const counts = { cycle:0, fan_in:0, fan_out:0, shell_network:0 };
+  const counts = { cycle: 0, fan_in: 0, fan_out: 0, shell_network: 0 };
   rings.forEach(r => { if (counts[r.pattern_type] !== undefined) counts[r.pattern_type]++; });
 
   if (patternChart) patternChart.destroy();
   patternChart = new Chart($('patternChart'), {
-    type:'bar',
-    data:{
-      labels:Object.keys(counts),
-      datasets:[{ label:'Rings', data:Object.values(counts), backgroundColor: cssVar('--brand') || '#4f46e5' }]
+    type: 'bar',
+    data: {
+      labels: Object.keys(counts),
+      datasets: [{ label: 'Rings', data: Object.values(counts), backgroundColor: cssVar('--brand') || '#4f46e5' }]
     },
-    options:{
-      plugins:{ legend:{ labels:{ color:text } } },
-      scales:{
-        x:{ ticks:{ color:text }, grid:{ color:grid } },
-        y:{ ticks:{ color:text }, grid:{ color:grid }, beginAtZero:true }
+    options: {
+      plugins: { legend: { labels: { color: text } } },
+      scales: {
+        x: { ticks: { color: text }, grid: { color: grid } },
+        y: { ticks: { color: text }, grid: { color: grid }, beginAtZero: true }
       }
     }
   });
@@ -498,61 +498,61 @@ function buildCharts(){
   const step = Math.max(1, Math.floor(edges.length / bucketN));
   const labels = [];
   const vals = [];
-  for (let i=0;i<bucketN;i++){
-    const start = i*step, end = Math.min(edges.length, start+step);
+  for (let i = 0; i < bucketN; i++) {
+    const start = i * step, end = Math.min(edges.length, start + step);
     let sum = 0;
-    for (let j=start;j<end;j++) sum += Number(edges[j].weight || 0);
-    labels.push(`B${i+1}`);
+    for (let j = start; j < end; j++) sum += Number(edges[j].weight || 0);
+    labels.push(`B${i + 1}`);
     vals.push(sum);
   }
 
   if (velocityChart) velocityChart.destroy();
   velocityChart = new Chart($('velocityChart'), {
-    type:'line',
-    data:{
+    type: 'line',
+    data: {
       labels,
-      datasets:[{
-        label:'Volume',
+      datasets: [{
+        label: 'Volume',
         data: vals,
-        borderColor:'#22c55e',
-        backgroundColor:'rgba(34,197,94,0.14)',
-        fill:true,
-        tension:0.3
+        borderColor: '#22c55e',
+        backgroundColor: 'rgba(34,197,94,0.14)',
+        fill: true,
+        tension: 0.3
       }]
     },
-    options:{
-      plugins:{ legend:{ labels:{ color:text } } },
-      scales:{
-        x:{ ticks:{ color:text }, grid:{ color:grid } },
-        y:{ ticks:{ color:text }, grid:{ color:grid }, beginAtZero:true }
+    options: {
+      plugins: { legend: { labels: { color: text } } },
+      scales: {
+        x: { ticks: { color: text }, grid: { color: grid } },
+        y: { ticks: { color: text }, grid: { color: grid }, beginAtZero: true }
       }
     }
   });
 }
 
-function buildTimeline(){
+function buildTimeline() {
   const text = chartText();
   const grid = chartGrid();
 
-  const labels = Array.from({length: 7}, (_,i)=>`Day ${i+1}`);
-  const total = labels.map(()=>Math.floor(30 + Math.random()*40));
-  const suspicious = labels.map(()=>Math.floor(5 + Math.random()*25));
+  const labels = Array.from({ length: 7 }, (_, i) => `Day ${i + 1}`);
+  const total = labels.map(() => Math.floor(30 + Math.random() * 40));
+  const suspicious = labels.map(() => Math.floor(5 + Math.random() * 25));
 
   if (timelineChart) timelineChart.destroy();
   timelineChart = new Chart($('timelineChart'), {
-    type:'line',
-    data:{
+    type: 'line',
+    data: {
       labels,
-      datasets:[
-        { label:'Total', data: total, borderColor:'#60a5fa', tension:0.3 },
-        { label:'Suspicious', data: suspicious, borderColor:'#ef4444', tension:0.3 }
+      datasets: [
+        { label: 'Total', data: total, borderColor: '#60a5fa', tension: 0.3 },
+        { label: 'Suspicious', data: suspicious, borderColor: '#ef4444', tension: 0.3 }
       ]
     },
-    options:{
-      plugins:{ legend:{ labels:{ color:text } } },
-      scales:{
-        x:{ ticks:{ color:text }, grid:{ color:grid } },
-        y:{ ticks:{ color:text }, grid:{ color:grid }, beginAtZero:true }
+    options: {
+      plugins: { legend: { labels: { color: text } } },
+      scales: {
+        x: { ticks: { color: text }, grid: { color: grid } },
+        y: { ticks: { color: text }, grid: { color: grid }, beginAtZero: true }
       }
     }
   });
@@ -564,7 +564,7 @@ function buildTimeline(){
 }
 
 /* Graph */
-function buildGraph(){
+function buildGraph() {
   const wrap = $('graphWrap');
   const s = d3.select('#graphSvg');
   s.selectAll('*').remove();
@@ -573,7 +573,7 @@ function buildGraph(){
   const h = wrap.clientHeight;
   s.attr('width', w).attr('height', h);
 
-  const nodes = (analysisResults.graph_data?.nodes || []).map(n => ({...n}));
+  const nodes = (analysisResults.graph_data?.nodes || []).map(n => ({ ...n }));
   const links = (analysisResults.graph_data?.edges || []).map(e => ({ source: e.source, target: e.target, weight: Number(e.weight || 0) }));
 
   const linkColor = cssVar('--link') || 'rgba(15,23,42,0.22)';
@@ -582,19 +582,19 @@ function buildGraph(){
   svg = s;
   root = s.append('g');
 
-  zoom = d3.zoom().scaleExtent([0.2, 4]).on('zoom', (event)=> root.attr('transform', event.transform));
+  zoom = d3.zoom().scaleExtent([0.2, 4]).on('zoom', (event) => root.attr('transform', event.transform));
   s.call(zoom);
 
   s.append('defs').append('marker')
-    .attr('id','arrow')
-    .attr('viewBox','0 -5 10 10')
+    .attr('id', 'arrow')
+    .attr('viewBox', '0 -5 10 10')
     .attr('refX', 18)
     .attr('refY', 0)
     .attr('markerWidth', 6)
     .attr('markerHeight', 6)
-    .attr('orient','auto')
+    .attr('orient', 'auto')
     .append('path')
-    .attr('d','M0,-5L10,0L0,5')
+    .attr('d', 'M0,-5L10,0L0,5')
     .attr('fill', linkColor);
 
   linkSel = root.append('g')
@@ -603,8 +603,8 @@ function buildGraph(){
     .join('line')
     .attr('stroke', linkColor)
     .attr('stroke-opacity', 0.8)
-    .attr('stroke-width', d => Math.min(3, 0.6 + Math.sqrt(d.weight/2000)))
-    .attr('marker-end','url(#arrow)');
+    .attr('stroke-width', d => Math.min(3, 0.6 + Math.sqrt(d.weight / 2000)))
+    .attr('marker-end', 'url(#arrow)');
 
   nodeSel = root.append('g')
     .selectAll('circle')
@@ -617,21 +617,21 @@ function buildGraph(){
     })
     .attr('stroke', 'rgba(0,0,0,0.25)')
     .attr('stroke-width', 1.5)
-    .style('cursor','pointer')
-    .on('mousemove', (event,d)=> showTip(event, d))
+    .style('cursor', 'pointer')
+    .on('mousemove', (event, d) => showTip(event, d))
     .on('mouseleave', hideTip)
-    .on('click', (_,d)=> selectNode(d))
+    .on('click', (_, d) => selectNode(d))
     .call(d3.drag()
-      .on('start', (event,d)=>{ if (!event.active) sim.alphaTarget(0.25).restart(); d.fx=d.x; d.fy=d.y; })
-      .on('drag', (event,d)=>{ d.fx=event.x; d.fy=event.y; })
-      .on('end', (event,d)=>{ if (!event.active) sim.alphaTarget(0); d.fx=null; d.fy=null; })
+      .on('start', (event, d) => { if (!event.active) sim.alphaTarget(0.25).restart(); d.fx = d.x; d.fy = d.y; })
+      .on('drag', (event, d) => { d.fx = event.x; d.fy = event.y; })
+      .on('end', (event, d) => { if (!event.active) sim.alphaTarget(0); d.fx = null; d.fy = null; })
     );
 
   labelSel = root.append('g')
     .selectAll('text')
     .data(nodes)
     .join('text')
-    .text(d => d.id.length > 12 ? d.id.slice(0,12) + '…' : d.id)
+    .text(d => d.id.length > 12 ? d.id.slice(0, 12) + '…' : d.id)
     .attr('font-size', 9)
     .attr('fill', labelColor)
     .attr('dx', 10)
@@ -639,22 +639,22 @@ function buildGraph(){
     .style('display', ui.showLabels ? 'block' : 'none');
 
   sim = d3.forceSimulation(nodes)
-    .force('link', d3.forceLink(links).id(d=>d.id).distance(90))
+    .force('link', d3.forceLink(links).id(d => d.id).distance(90))
     .force('charge', d3.forceManyBody().strength(-180))
-    .force('center', d3.forceCenter(w/2, h/2))
+    .force('center', d3.forceCenter(w / 2, h / 2))
     .force('collide', d3.forceCollide().radius(18));
 
-  sim.on('tick', ()=>{
-    linkSel.attr('x1', d=>d.source.x).attr('y1', d=>d.source.y)
-           .attr('x2', d=>d.target.x).attr('y2', d=>d.target.y);
-    nodeSel.attr('cx', d=>d.x).attr('cy', d=>d.y);
-    labelSel.attr('x', d=>d.x).attr('y', d=>d.y);
+  sim.on('tick', () => {
+    linkSel.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+      .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+    nodeSel.attr('cx', d => d.x).attr('cy', d => d.y);
+    labelSel.attr('x', d => d.x).attr('y', d => d.y);
   });
 
   applyGraphFilters();
 }
 
-function showTip(event, d){
+function showTip(event, d) {
   const tip = $('nodeTip');
   tip.innerHTML = `
     <div style="font-weight:800">${d.id}</div>
@@ -662,16 +662,16 @@ function showTip(event, d){
       <div><span class="muted">Sent:</span> $${fmtMoney(d.total_sent)}</div>
       <div><span class="muted">Received:</span> $${fmtMoney(d.total_received)}</div>
       <div><span class="muted">Tx count:</span> ${d.transaction_count}</div>
-      <div><span class="muted">Score:</span> ${(Number(d.suspicion_score||0)).toFixed(1)}</div>
+      <div><span class="muted">Score:</span> ${(Number(d.suspicion_score || 0)).toFixed(1)}</div>
     </div>
   `;
   tip.style.left = (event.offsetX + 14) + 'px';
   tip.style.top = (event.offsetY + 14) + 'px';
   tip.classList.add('show');
 }
-function hideTip(){ $('nodeTip').classList.remove('show'); }
+function hideTip() { $('nodeTip').classList.remove('show'); }
 
-function selectNode(d){
+function selectNode(d) {
   const pats = nodePatternMap.get(d.id);
   const pStr = pats ? Array.from(pats).join(', ') : '—';
 
@@ -680,15 +680,15 @@ function selectNode(d){
     <div><span class="muted">Sent:</span> $${fmtMoney(d.total_sent)}</div>
     <div><span class="muted">Received:</span> $${fmtMoney(d.total_received)}</div>
     <div><span class="muted">Transactions:</span> ${d.transaction_count}</div>
-    <div><span class="muted">Suspicion:</span> ${(Number(d.suspicion_score||0)).toFixed(1)}</div>
+    <div><span class="muted">Suspicion:</span> ${(Number(d.suspicion_score || 0)).toFixed(1)}</div>
     <div><span class="muted">Patterns:</span> ${pStr}</div>
   `;
 
   nodeSel.attr('stroke', n => n.id === d.id ? 'rgba(22,163,74,0.9)' : 'rgba(0,0,0,0.25)')
-        .attr('stroke-width', n => n.id === d.id ? 3 : 1.5);
+    .attr('stroke-width', n => n.id === d.id ? 3 : 1.5);
 }
 
-function applyGraphFilters(){
+function applyGraphFilters() {
   if (!analysisResults || !nodeSel) return;
 
   const minRisk = Number($('minRisk').value || 0);
@@ -704,7 +704,7 @@ function applyGraphFilters(){
     if (onlySusp && !susp) return 0.08;
     if (susp && score < minRisk) return 0.15;
 
-    if (pattern !== 'all'){
+    if (pattern !== 'all') {
       const pats = nodePatternMap.get(d.id);
       const has = pats ? pats.has(pattern) : false;
       if (susp && !has) return 0.12;
@@ -715,51 +715,51 @@ function applyGraphFilters(){
   labelSel.style('display', ui.showLabels ? 'block' : 'none');
 }
 
-function focusRing(ringId){
+function focusRing(ringId) {
   const ring = (analysisResults.fraud_rings || []).find(r => r.ring_id === ringId);
   if (!ring) return;
   const members = new Set(ring.member_accounts || []);
   nodeSel.attr('stroke', d => members.has(d.id) ? 'rgba(22,163,74,0.9)' : 'rgba(0,0,0,0.25)')
-        .attr('stroke-width', d => members.has(d.id) ? 3 : 1.5);
+    .attr('stroke-width', d => members.has(d.id) ? 3 : 1.5);
   setTab('graph');
   toast('success', 'Ring highlighted', `${ringId} selected in graph.`);
 }
 
-function focusAccount(accId){
+function focusAccount(accId) {
   if (!nodeSel) return;
   nodeSel.attr('stroke', d => d.id === accId ? 'rgba(22,163,74,0.9)' : 'rgba(0,0,0,0.25)')
-        .attr('stroke-width', d => d.id === accId ? 3 : 1.5);
+    .attr('stroke-width', d => d.id === accId ? 3 : 1.5);
   setTab('graph');
   toast('info', 'Account focused', accId);
 }
 
-function fmtMoney(x){
+function fmtMoney(x) {
   const n = Number(x || 0);
-  return n.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+  return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function zoomBy(k){
+function zoomBy(k) {
   if (!svg || !zoom) return;
   svg.transition().duration(150).call(zoom.scaleBy, k);
 }
-function resetView(){
+function resetView() {
   if (!svg || !zoom) return;
   svg.transition().duration(250).call(zoom.transform, d3.zoomIdentity);
 }
-function exportSVG(){
+function exportSVG() {
   const svgEl = $('graphSvg');
   const xml = new XMLSerializer().serializeToString(svgEl);
-  const blob = new Blob([xml], {type:'image/svg+xml;charset=utf-8'});
+  const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = 'network_graph.svg';
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
 }
-function exportPNG(){
+function exportPNG() {
   const svgEl = $('graphSvg');
   const xml = new XMLSerializer().serializeToString(svgEl);
-  const blob = new Blob([xml], {type:'image/svg+xml;charset=utf-8'});
+  const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
   const url = URL.createObjectURL(blob);
 
   const img = new Image();
@@ -769,11 +769,11 @@ function exportPNG(){
     canvas.height = svgEl.clientHeight || 700;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = ui.theme === 'dark' ? '#0b0f1d' : '#f5f7ff';
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.drawImage(img,0,0);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
     URL.revokeObjectURL(url);
 
-    canvas.toBlob((png)=>{
+    canvas.toBlob((png) => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(png);
       a.download = 'network_graph.png';
@@ -784,8 +784,8 @@ function exportPNG(){
   img.src = url;
 }
 
-function globalSearch(){
-  if (!analysisResults){
+function globalSearch() {
+  if (!analysisResults) {
     toast('warn', 'Search', 'Run analysis first.');
     return;
   }
@@ -794,7 +794,7 @@ function globalSearch(){
   focusAccount(q);
 }
 
-function resetAll(){
+function resetAll() {
   selectedFile = null;
   analysisResults = null;
   ui.history = [];
@@ -826,7 +826,7 @@ function resetAll(){
   setTab('home');
 }
 
-function bindButtons(){
+function bindButtons() {
   $('downloadJsonBtn').addEventListener('click', downloadJSON);
   $('downloadJsonBtn2').addEventListener('click', downloadJSON);
   $('downloadCsvBtn').addEventListener('click', downloadCSVs);
@@ -834,20 +834,19 @@ function bindButtons(){
   $('exportPdfBtn2').addEventListener('click', exportPDF);
 
   $('globalSearchBtn').addEventListener('click', globalSearch);
-  $('globalSearch').addEventListener('keydown', (e)=>{ if (e.key === 'Enter') globalSearch(); });
+  $('globalSearch').addEventListener('keydown', (e) => { if (e.key === 'Enter') globalSearch(); });
 
-  $('notifBtn').addEventListener('click', ()=> toast('info','Notifications','Alerts show here during analysis and exports.'));
   $('newAnalysisBtn').addEventListener('click', resetAll);
 
   $('minRisk').addEventListener('input', applyGraphFilters);
   $('onlySuspicious').addEventListener('change', applyGraphFilters);
   $('patternFilter').addEventListener('change', applyGraphFilters);
 
-  $('zoomIn').addEventListener('click', ()=> zoomBy(1.2));
-  $('zoomOut').addEventListener('click', ()=> zoomBy(0.85));
+  $('zoomIn').addEventListener('click', () => zoomBy(1.2));
+  $('zoomOut').addEventListener('click', () => zoomBy(0.85));
   $('resetView').addEventListener('click', resetView);
 
-  $('toggleLabels').addEventListener('click', ()=>{
+  $('toggleLabels').addEventListener('click', () => {
     ui.showLabels = !ui.showLabels;
     applyGraphFilters();
     toast('info', 'Graph', `Labels ${ui.showLabels ? 'enabled' : 'hidden'}.`);
