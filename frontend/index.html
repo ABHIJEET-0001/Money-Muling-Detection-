@@ -1,11 +1,12 @@
 <!doctype html>
 <html lang="en" data-theme="light">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>FinForensics</title>
 
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
@@ -36,10 +37,6 @@
         <i class="fa-solid fa-circle-half-stroke"></i> Theme
       </button>
 
-      <button id="notifBtn" class="btn btn-outline icon" type="button" title="Notifications">
-        <i class="fa-regular fa-bell"></i>
-        <span id="notifBadge" class="badge">0</span>
-      </button>
 
       <button id="newAnalysisBtn" class="btn btn-primary" type="button">
         <i class="fa-solid fa-rotate"></i> New Analysis
@@ -155,14 +152,38 @@
         <div class="table-wrap">
           <table class="table">
             <thead>
-              <tr><th>Column</th><th>Type</th><th>Example</th></tr>
+              <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Example</th>
+              </tr>
             </thead>
             <tbody>
-              <tr><td>transaction_id</td><td>String</td><td>TX_0001</td></tr>
-              <tr><td>sender_id</td><td>String</td><td>ACC_00123</td></tr>
-              <tr><td>receiver_id</td><td>String</td><td>ACC_00999</td></tr>
-              <tr><td>amount</td><td>Float</td><td>1250.75</td></tr>
-              <tr><td>timestamp</td><td>DateTime</td><td>2024-01-10 11:20:00</td></tr>
+              <tr>
+                <td>transaction_id</td>
+                <td>String</td>
+                <td>TX_0001</td>
+              </tr>
+              <tr>
+                <td>sender_id</td>
+                <td>String</td>
+                <td>ACC_00123</td>
+              </tr>
+              <tr>
+                <td>receiver_id</td>
+                <td>String</td>
+                <td>ACC_00999</td>
+              </tr>
+              <tr>
+                <td>amount</td>
+                <td>Float</td>
+                <td>1250.75</td>
+              </tr>
+              <tr>
+                <td>timestamp</td>
+                <td>DateTime</td>
+                <td>2024-01-10 11:20:00</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -192,7 +213,8 @@
             <h2>Upload Transaction CSV</h2>
             <p class="muted">
               Required columns:
-              <code>transaction_id</code>, <code>sender_id</code>, <code>receiver_id</code>, <code>amount</code>, <code>timestamp</code>
+              <code>transaction_id</code>, <code>sender_id</code>, <code>receiver_id</code>, <code>amount</code>,
+              <code>timestamp</code>
             </p>
           </div>
 
@@ -250,14 +272,38 @@
           <div class="table-wrap">
             <table class="table">
               <thead>
-                <tr><th>Column</th><th>Type</th><th>Example</th></tr>
+                <tr>
+                  <th>Column</th>
+                  <th>Type</th>
+                  <th>Example</th>
+                </tr>
               </thead>
               <tbody>
-                <tr><td>transaction_id</td><td>String</td><td>TX_0001</td></tr>
-                <tr><td>sender_id</td><td>String</td><td>ACC_00123</td></tr>
-                <tr><td>receiver_id</td><td>String</td><td>ACC_00999</td></tr>
-                <tr><td>amount</td><td>Float</td><td>1250.75</td></tr>
-                <tr><td>timestamp</td><td>DateTime</td><td>2024-01-10 11:20:00</td></tr>
+                <tr>
+                  <td>transaction_id</td>
+                  <td>String</td>
+                  <td>TX_0001</td>
+                </tr>
+                <tr>
+                  <td>sender_id</td>
+                  <td>String</td>
+                  <td>ACC_00123</td>
+                </tr>
+                <tr>
+                  <td>receiver_id</td>
+                  <td>String</td>
+                  <td>ACC_00999</td>
+                </tr>
+                <tr>
+                  <td>amount</td>
+                  <td>Float</td>
+                  <td>1250.75</td>
+                </tr>
+                <tr>
+                  <td>timestamp</td>
+                  <td>DateTime</td>
+                  <td>2024-01-10 11:20:00</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -289,6 +335,16 @@
           <div class="kpi-label">Processing Time</div>
           <div id="kpiTime" class="kpi-value">0s</div>
         </div>
+      </div>
+
+      <div id="aiInsightBox" class="card ai-card hidden mb16">
+        <div class="card-head">
+          <div class="row-between">
+            <h3><i class="fa-solid fa-brain" style="color:var(--brand2)"></i> AI Forensic Insight</h3>
+            <span class="pill small">Gemini AI</span>
+          </div>
+        </div>
+        <p id="aiInsightText" class="ai-text"></p>
       </div>
 
       <div class="grid grid-3">
@@ -352,9 +408,12 @@
           <div class="divider"></div>
 
           <div class="btn-row">
-            <button id="zoomIn" class="btn btn-outline btn-sm"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
-            <button id="zoomOut" class="btn btn-outline btn-sm"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
-            <button id="resetView" class="btn btn-outline btn-sm"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></button>
+            <button id="zoomIn" class="btn btn-outline btn-sm"><i
+                class="fa-solid fa-magnifying-glass-plus"></i></button>
+            <button id="zoomOut" class="btn btn-outline btn-sm"><i
+                class="fa-solid fa-magnifying-glass-minus"></i></button>
+            <button id="resetView" class="btn btn-outline btn-sm"><i
+                class="fa-solid fa-up-right-and-down-left-from-center"></i></button>
             <button id="toggleLabels" class="btn btn-outline btn-sm"><i class="fa-solid fa-tag"></i></button>
           </div>
 
@@ -415,7 +474,9 @@
               </tr>
             </thead>
             <tbody id="ringsBody">
-              <tr><td colspan="6" class="muted">Run analysis to populate.</td></tr>
+              <tr>
+                <td colspan="6" class="muted">Run analysis to populate.</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -454,7 +515,9 @@
               </tr>
             </thead>
             <tbody id="accountsBody">
-              <tr><td colspan="5" class="muted">Run analysis to populate.</td></tr>
+              <tr>
+                <td colspan="5" class="muted">Run analysis to populate.</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -487,7 +550,8 @@
 
           <div class="divider"></div>
           <div class="muted small">
-            Want real timeline buckets (hour/day)? We can add a backend field without changing required JSON export format.
+            Want real timeline buckets (hour/day)? We can add a backend field without changing required JSON export
+            format.
           </div>
         </div>
       </div>
@@ -535,4 +599,5 @@
 
   <script src="script.js"></script>
 </body>
+
 </html>
