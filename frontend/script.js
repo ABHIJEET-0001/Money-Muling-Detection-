@@ -8,6 +8,9 @@ const ui = {
   aiInsight: null
 };
 
+// API Configuration
+const API_BASE = window.location.protocol === 'file:' ? 'http://127.0.0.1:5000' : '';
+
 // Chart instances
 let riskChart = null;
 let patternChart = null;
@@ -133,7 +136,7 @@ function clearFile() {
 async function loadSampleDataset() {
   try {
     toast('info', 'Loading', 'Fetching sample dataset…');
-    const res = await fetch('/api/sample-data');
+    const res = await fetch(`${API_BASE}/api/sample-data`);
     if (!res.ok) throw new Error('Sample endpoint failed');
     const data = await res.json();
 
@@ -161,7 +164,7 @@ async function runAnalysis(file) {
     const fd = new FormData();
     fd.append('file', file);
 
-    const res = await fetch('/api/analyze', { method: 'POST', body: fd });
+    const res = await fetch(`${API_BASE}/api/analyze`, { method: 'POST', body: fd });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Analysis failed');
