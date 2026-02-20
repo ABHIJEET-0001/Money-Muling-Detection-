@@ -114,7 +114,13 @@ def analyze_transactions():
     except pd.errors.ParserError as e:
         return jsonify({"error": f"CSV Format Error: {str(e)}. Please ensure the file is comma-separated and has the correct columns."}), 400
     except Exception as e:
-        return jsonify({"error": f"Analysis failed: {str(e)}"}), 500
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"CRITICAL ERROR: {error_details}")
+        return jsonify({
+            "error": f"Analysis failed: {str(e)}",
+            "details": error_details.splitlines()[-3:] if len(error_details.splitlines()) > 3 else error_details
+        }), 500
 
 @app.route('/api/sample-data', methods=['GET'])
 def get_sample_data():
