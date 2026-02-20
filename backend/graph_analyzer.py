@@ -19,10 +19,19 @@ class GraphAnalyzer:
     def _build_graph(self):
         """Build directed graph from transaction data"""
         for _, row in self.df.iterrows():
-            sender = row['sender_id']
-            receiver = row['receiver_id']
-            amount = float(row['amount'])
-            timestamp = row['timestamp']
+            sender = str(row['sender_id'])
+            receiver = str(row['receiver_id'])
+            
+            # Clean amount: handle potential string types with currency symbols
+            amt_raw = row['amount']
+            if isinstance(amt_raw, str):
+                import re
+                amt_str = re.sub(r'[^\d.]', '', amt_raw)
+                amount = float(amt_str) if amt_str else 0.0
+            else:
+                amount = float(amt_raw) if pd.notnull(amt_raw) else 0.0
+                
+            timestamp = str(row['timestamp']) if pd.notnull(row['timestamp']) else "N/A"
             
             # Add nodes with attributes
             if sender not in self.G:
