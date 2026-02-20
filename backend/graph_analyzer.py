@@ -7,6 +7,9 @@ import networkx as nx
 from collections import defaultdict
 from datetime import datetime, timedelta
 import numpy as np
+import pandas as pd
+import re
+import io
 
 class GraphAnalyzer:
     def __init__(self, df):
@@ -25,7 +28,6 @@ class GraphAnalyzer:
             # Clean amount: handle potential string types with currency symbols
             amt_raw = row['amount']
             if isinstance(amt_raw, str):
-                import re
                 amt_str = re.sub(r'[^\d.]', '', amt_raw)
                 amount = float(amt_str) if amt_str else 0.0
             else:
