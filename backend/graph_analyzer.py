@@ -35,11 +35,11 @@ class GraphAnalyzer:
             # Update node attributes
             self.G.nodes[sender]['total_sent'] += amount
             self.G.nodes[sender]['transaction_count'] += 1
-            self.G.nodes[sender]['timestamps'].append(timestamp)
+            self.G.nodes[sender]['timestamps'].append(str(timestamp))
             
             self.G.nodes[receiver]['total_received'] += amount
             self.G.nodes[receiver]['transaction_count'] += 1
-            self.G.nodes[receiver]['timestamps'].append(timestamp)
+            self.G.nodes[receiver]['timestamps'].append(str(timestamp))
             
             # Add or update edge
             if self.G.has_edge(sender, receiver):
@@ -229,7 +229,8 @@ class GraphAnalyzer:
                         legitimate_accounts.add(node)
             
             # Check for merchant-like naming patterns
-            if any(keyword in node.upper() for keyword in 
+            node_str = str(node).upper()
+            if any(keyword in node_str for keyword in 
                    ['MERCHANT', 'PAYROLL', 'SALARY', 'CORP', 'INC', 'LLC']):
                 legitimate_accounts.add(node)
         
