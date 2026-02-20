@@ -13,6 +13,9 @@ from werkzeug.utils import secure_filename
 from detection_engine import MoneyMulingDetector
 import google.generativeai as genai
 from dotenv import load_dotenv
+import re
+import io
+import traceback
 
 # Load environment variables
 load_dotenv()
@@ -70,7 +73,6 @@ def analyze_transactions():
         return jsonify({"error": "Invalid file type. Please upload a CSV file"}), 400
     
     try:
-        import io
         # Read file into memory first to avoid stream issues in serverless
         file_content = file.read()
         if not file_content:
