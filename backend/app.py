@@ -18,19 +18,20 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configure Gemini API
-genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
+API_KEY = os.environ.get("GOOGLE_API_KEY")
+if API_KEY:
+    try:
+        genai.configure(api_key=API_KEY)
+    except Exception as e:
+        print(f"Gemini configuration failed: {e}")
 
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
 CORS(app)
 
-UPLOAD_FOLDER = 'uploads'
+# Note: os.makedirs removed for serverless compatibility (Vercel)
+# If you need temporary storage, use /tmp on Vercel or cloud storage
+MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max
 ALLOWED_EXTENSIONS = {'csv'}
-
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -64,8 +65,22 @@ def analyze_transactions():
         return jsonify({"error": "Invalid file type. Please upload a CSV file"}), 400
     
     try:
-        # Read CSV file with automatic delimiter detection and skip malformed rows
-        df = pd.read_csv(file, sep=None, engine='python', on_bad_lines='skip', encoding_errors='ignore')
+        import io
+        # Read file into memory first to avoid stream issues in serverless
+        file_content = file.read()
+        if not file_content:
+            return jsonify({"error": "The uploaded file is empty"}), 400
+            
+        # Use BytesIO to provide a file-like object to pandas
+        file_stream = io.BytesIO(file_content)
+        
+        # Read CSV file with automatic delimiter detection
+        try:
+            df = pd.read_csv(file_stream, sep=None, engine='python', on_bad_lines='skip', encoding_errors='ignore')
+        except Exception as e:
+            # Fallback if sniffing fails
+            file_stream.seek(0)
+            df = pd.read_csv(file_stream, on_bad_lines='skip', encoding_errors='ignore')
         
         # Validate required columns
         required_columns = ['transaction_id', 'sender_id', 'receiver_id', 'amount', 'timestamp']
