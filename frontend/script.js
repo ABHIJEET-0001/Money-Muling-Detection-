@@ -168,10 +168,16 @@ async function runAnalysis(file) {
     if (!res.ok) {
       let errorMsg = 'Analysis failed';
       try {
-        const err = await res.json();
-        errorMsg = err.error || (err.details ? err.details.join(' ') : 'Server Error');
-        console.error('Analysis Error Details:', err);
-      } catch (jsonErr) {
+        const text = await res.text();
+        try {
+          const err = JSON.parse(text);
+          errorMsg = err.error || (err.details ? err.details.join(' ') : 'Server Error');
+          console.error('Analysis Error Details:', err);
+        } catch (j) {
+          // If not JSON, use the raw text but trim it
+          errorMsg = text.length > 100 ? text.substring(0, 100) + '...' : text;
+        }
+      } catch (textErr) {
         errorMsg = `Error ${res.status}: ${res.statusText}`;
       }
       throw new Error(errorMsg);
