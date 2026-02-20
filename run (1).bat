@@ -1,43 +1,52 @@
-
-### `run.bat` (Windows batch file to run the project)
-
-```batch
 @echo off
+setlocal
 echo ========================================
-echo Money Muling Detection Engine
+echo Money Muling Detection Engine - Starter
 echo RIFT 2026 Hackathon
 echo ========================================
 echo.
 
-REM Check if Python is installed
+:: Check for Python
 python --version >nul 2>&1
-if errorlevel 1 (
-    echo Python is not installed or not in PATH
-    echo Please install Python 3.9+ from https://www.python.org/
+if %errorlevel% neq 0 (
+    echo [ERROR] Python not found. Please install Python 3.9+ from python.org.
     pause
     exit /b 1
 )
 
-REM Check if virtual environment exists
-if not exist "venv" (
-    echo Creating virtual environment...
-    python -m venv venv
+:: Go to backend folder
+cd /d "%~dp0backend"
+
+:: Create venv if it doesn't exist
+if not exist "..\venv" (
+    echo [INFO] Creating virtual environment...
+    python -m venv ..\venv
 )
 
-REM Activate virtual environment
-echo Activating virtual environment...
-call venv\Scripts\activate.bat
+:: Activate venv
+echo [INFO] Activating virtual environment...
+if exist "..\venv\Scripts\activate.bat" (
+    call ..\venv\Scripts\activate.bat
+) else (
+    echo [ERROR] Virtual environment activation script not found.
+    pause
+    exit /b 1
+)
 
-REM Install requirements
-echo Installing dependencies...
-pip install -r backend\requirements.txt
+:: Install requirements
+echo [INFO] Installing dependencies...
+pip install -r requirements.txt
 
-REM Run the application
+:: Start the server
 echo.
-echo Starting the server...
-echo Open http://localhost:5000 in your browser
+echo [SUCCESS] Starting the Flask server...
 echo.
-cd backend
+echo ===^> Access the app at: http://127.0.0.1:5000
+echo.
+
+:: Try to open the browser automatically
+start http://127.0.0.1:5000
+
 python app.py
 
 pause
