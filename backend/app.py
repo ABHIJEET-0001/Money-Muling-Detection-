@@ -46,7 +46,12 @@ def serve_static(path):
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    return jsonify({"status": "healthy", "message": "Money Muling Detection Engine is running"})
+    return jsonify({
+        "status": "healthy", 
+        "message": "Money Muling Detection Engine is running",
+        "version": "2.1.0-robust",
+        "environment": os.environ.get("VERCEL_ENV", "local")
+    })
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze_transactions():
@@ -74,13 +79,21 @@ def analyze_transactions():
         # Use BytesIO to provide a file-like object to pandas
         file_stream = io.BytesIO(file_content)
         
-        # Read CSV file with automatic delimiter detection
         try:
-            df = pd.read_csv(file_stream, sep=None, engine='python', on_bad_lines='skip', encoding_errors='ignore')
-        except Exception as e:
-            # Fallback if sniffing fails
+            # First try standard comma-separated with memory-efficient engine
+            df = pd.read_csv(file_stream, sep=',', on_bad_lines='skip', encoding_errors='ignore')
+            
+            # If it only found one column, it might be a different delimiter
+            if len(df.columns) < 5:
+                file_stream.seek(0)
+                df = pd.read_csv(file_stream, sep=None, engine='python', on_bad_lines='skip', encoding_errors='ignore')
+        except Exception as csv_err:
+            print(f"Primary CSV read failed, trying auto-sniff: {csv_err}")
             file_stream.seek(0)
-            df = pd.read_csv(file_stream, on_bad_lines='skip', encoding_errors='ignore')
+            df = pd.read_csv(file_stream, sep=None, engine='python', on_bad_lines='skip', encoding_errors='ignore')
+        
+        # Immediate cleanup of stream
+        file_stream.close()
         
         # Validate required columns
         required_columns = ['transaction_id', 'sender_id', 'receiver_id', 'amount', 'timestamp']
