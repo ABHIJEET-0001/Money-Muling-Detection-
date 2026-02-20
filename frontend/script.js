@@ -166,8 +166,15 @@ async function runAnalysis(file) {
 
     const res = await fetch(`${API_BASE}/api/analyze`, { method: 'POST', body: fd });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Analysis failed');
+      let errorMsg = 'Analysis failed';
+      try {
+        const err = await res.json();
+        errorMsg = err.error || (err.details ? err.details.join(' ') : 'Server Error');
+        console.error('Analysis Error Details:', err);
+      } catch (jsonErr) {
+        errorMsg = `Error ${res.status}: ${res.statusText}`;
+      }
+      throw new Error(errorMsg);
     }
 
     analysisResults = await res.json();
