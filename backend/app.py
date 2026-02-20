@@ -11,7 +11,7 @@ import time
 import json
 from werkzeug.utils import secure_filename
 from detection_engine import MoneyMulingDetector
-import google.generativeai as genai
+# import google.generativeai as genai (moved inside to speed up boot)
 from dotenv import load_dotenv
 import re
 import io
@@ -20,13 +20,17 @@ import traceback
 # Load environment variables
 load_dotenv()
 
-# Configure Gemini API
-API_KEY = os.environ.get("GOOGLE_API_KEY")
-if API_KEY:
-    try:
-        genai.configure(api_key=API_KEY)
-    except Exception as e:
-        print(f"Gemini configuration failed: {e}")
+# Lazy configuration for Gemini
+def configure_genai():
+    API_KEY = os.environ.get("GOOGLE_API_KEY")
+    if API_KEY:
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=API_KEY)
+            return genai
+        except Exception as e:
+            print(f"Gemini configuration failed: {e}")
+    return None
 
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
 CORS(app)
@@ -145,6 +149,10 @@ def get_sample_data():
 
 def get_ai_explanation(rings, summary):
     """Use Gemini AI to explain the detected fraud patterns"""
+    genai = configure_genai()
+    if not genai:
+        return "AI Insight unavailable (No API Key)"
+        
     model = genai.GenerativeModel('gemini-1.5-flash')
     
     # Prepare data for the prompt
