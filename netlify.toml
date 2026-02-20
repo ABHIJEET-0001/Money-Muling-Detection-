@@ -1,9 +1,16 @@
 [build]
   publish = "frontend"
-  command = "echo 'Static frontend build (Backend must be hosted elsewhere)'"
+  command = "echo 'Building FinForensics Frontend...'"
 
+# Redirect all /api requests to your backend (Vercel/Render/etc)
+# You can change the 'to' URL once you have your deployment link
 [[redirects]]
   from = "/api/*"
-  to = "https://money-muling-detection-backend.onrender.com/api/:splat"
+  to = "/api/:splat"
   status = 200
-  force = true
+
+# Handle Single Page App routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
