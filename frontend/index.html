@@ -52,8 +52,7 @@
     <button class="tab" data-target="graph"><i class="fa-solid fa-diagram-project"></i> Network Graph</button>
     <button class="tab" data-target="rings"><i class="fa-solid fa-bullseye"></i> Fraud Rings</button>
     <button class="tab" data-target="accounts"><i class="fa-solid fa-user-shield"></i> Suspicious Accounts</button>
-    <button class="tab" data-target="timeline"><i class="fa-regular fa-clock"></i> Timeline</button>
-    <button class="tab" data-target="reports"><i class="fa-regular fa-file-lines"></i> Reports</button>
+    <button class="tab" data-target="timeline"><i class="fa-solid fa-layer-group"></i> Timeline & Reports</button>
   </nav>
 
   <main class="container">
@@ -525,13 +524,13 @@
       </div>
     </section>
 
-    <!-- TIMELINE -->
+    <!-- TIMELINE & REPORTS -->
     <section class="panel" id="panel-timeline">
       <div class="grid grid-2">
         <div class="card">
           <div class="card-head">
-            <h2>Timeline Analysis</h2>
-            <p class="muted small">If backend doesn’t return buckets, a proxy view is shown.</p>
+            <h2>Timeline & Reporting</h2>
+            <p class="muted small">Review activity patterns and export verified investigation outputs in one place.</p>
           </div>
           <div class="chart tall"><canvas id="timelineChart"></canvas></div>
         </div>
@@ -550,20 +549,9 @@
           </div>
 
           <div class="divider"></div>
-          <div class="muted small">
-            Want real timeline buckets (hour/day)? We can add a backend field without changing required JSON export
-            format.
-          </div>
-        </div>
-      </div>
-    </section>
 
-    <!-- REPORTS -->
-    <section class="panel" id="panel-reports">
-      <div class="grid grid-2">
-        <div class="card">
           <div class="card-head">
-            <h2>Reports</h2>
+            <h3>Export Actions</h3>
             <p class="muted small">Exports are enabled after analysis.</p>
           </div>
 
@@ -583,9 +571,8 @@
           <div class="muted small">
             JSON export follows the exact structure required for evaluation.
           </div>
-        </div>
 
-        <div class="card">
+          <div class="divider"></div>
           <div class="card-head">
             <h3>Export History</h3>
             <p class="muted small">Local-only session log.</p>
