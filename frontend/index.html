@@ -61,6 +61,7 @@
     <section class="panel show" id="panel-home">
       <div class="home-hero">
         <div class="hero-text">
+          <div class="eyebrow"><i class="fa-solid fa-shield-halved"></i> Operational fraud intelligence</div>
           <h1>Graph-Based Money Muling Detection</h1>
           <p class="hero-sub">
             Upload transaction CSVs, uncover hidden multi-hop fund flows, and export a compliant JSON report.
@@ -340,7 +341,7 @@
       <div id="aiInsightBox" class="card ai-card hidden mb16">
         <div class="card-head">
           <div class="row-between">
-            <h3><i class="fa-solid fa-brain" style="color:var(--brand2)"></i> AI Forensic Insight</h3>
+            <h3><i class="fa-solid fa-brain ai-icon"></i> AI Forensic Insight</h3>
             <span class="pill small">Gemini AI</span>
           </div>
         </div>
@@ -383,8 +384,8 @@
             <p class="muted small">Filters apply immediately.</p>
           </div>
 
-          <label class="muted small">Min suspicion score</label>
-          <input id="minRisk" type="range" min="0" max="100" value="0" />
+          <label class="muted small control-label" for="minRisk">Minimum suspicion score</label>
+          <input id="minRisk" type="range" min="0" max="100" value="0" aria-label="Minimum suspicion score" />
           <div class="range-row">
             <span class="muted small">0</span>
             <span id="minRiskVal" class="muted small">0</span>
@@ -396,8 +397,8 @@
             <label for="onlySuspicious">Suspicious-only view</label>
           </div>
 
-          <label class="muted small mt">Ring pattern filter</label>
-          <select id="patternFilter">
+          <label class="muted small mt control-label" for="patternFilter">Ring pattern filter</label>
+          <select id="patternFilter" title="Filter graph by ring pattern">
             <option value="all" selected>All</option>
             <option value="cycle">cycle</option>
             <option value="fan_in">fan_in</option>
@@ -408,13 +409,13 @@
           <div class="divider"></div>
 
           <div class="btn-row">
-            <button id="zoomIn" class="btn btn-outline btn-sm"><i
+            <button id="zoomIn" class="btn btn-outline btn-sm" title="Zoom in"><i
                 class="fa-solid fa-magnifying-glass-plus"></i></button>
-            <button id="zoomOut" class="btn btn-outline btn-sm"><i
+            <button id="zoomOut" class="btn btn-outline btn-sm" title="Zoom out"><i
                 class="fa-solid fa-magnifying-glass-minus"></i></button>
-            <button id="resetView" class="btn btn-outline btn-sm"><i
+            <button id="resetView" class="btn btn-outline btn-sm" title="Reset view"><i
                 class="fa-solid fa-up-right-and-down-left-from-center"></i></button>
-            <button id="toggleLabels" class="btn btn-outline btn-sm"><i class="fa-solid fa-tag"></i></button>
+            <button id="toggleLabels" class="btn btn-outline btn-sm" title="Toggle labels"><i class="fa-solid fa-tag"></i></button>
           </div>
 
           <div class="divider"></div>
@@ -494,7 +495,7 @@
 
           <div class="filters">
             <input id="accountsSearch" class="input" placeholder="Search accounts/patterns..." />
-            <select id="riskFilter">
+            <select id="riskFilter" title="Filter by risk level">
               <option value="all" selected>All</option>
               <option value="high">High (≥70)</option>
               <option value="med">Medium (40–69)</option>
